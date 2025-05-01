@@ -1,0 +1,45 @@
+/* Style cho các tab */
+
+.stTabs [aria-selected="true"] {
+    background-color: #0E1117; /* backgroundColor */
+    color: #38bdf8; /* primaryColor */
+    font-weight: bold;
+}
+
+.stTabs [data-testid="stVerticalBlock"] {
+    background-color: #0E1117; /* backgroundColor */
+    padding: 20px;
+    border-radius: 0 0 8px 8px;
+}
+/* Style cho button */
+.stButton > button {
+    background-color: #38bdf8; /* primaryColor */
+    color: #f8f8f2;; /* Một màu tối hơn backgroundColor để tương phản */
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.stButton > button:hover {
+    background-color: #0ea5e9;
+    color: #f8f8f293;
+}
+
+.st-key-save_changes button:focus {
+    color: #f8f8f2 !important;
+}
+
+.st-key-change_password button:focus {
+    color: #f8f8f2 !important;
+}
+/* Style cho caption */
+.stCaption {
+    color: #6B7280; /* Một màu xám nhạt hơn textColor */
+    font-size: 0.85em;
+    margin-top: -10px;
+    margin-bottom: 10px;
+}

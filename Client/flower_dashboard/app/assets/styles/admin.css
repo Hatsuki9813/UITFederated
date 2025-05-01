@@ -1,0 +1,31 @@
+/* ... CSS hiện tại của bạn ... */
+
+/* Admin Overview Stats Cards */
+.admin-stat-card {
+    background-color: #1e293b; /* Màu nền tối */
+    color: #f8f8f2; /* Màu chữ sáng */
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px; /* Khoảng cách giữa các card nếu cần */
+    margin-left: 50px;
+    margin-right: 50px; /* Để căn trái các card */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    text-align: left;
+}
+
+.admin-stat-card .stat-title {
+    font-size: 1.5em;
+    color: #cbd5e1;
+    margin-bottom: 5px;
+}
+
+.admin-stat-card .stat-value {
+    font-size: 1.8em;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.admin-stat-card .stat-change {
+    font-size: 0.9em;
+    color: #84cc16; /* Màu cho phần trăm thay đổi */
+}
