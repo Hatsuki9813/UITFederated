@@ -1,5 +1,14 @@
 import streamlit as st
 import pathlib
+import subprocess
+import requests
+import json
+import os
+import time
+
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.warning("⚠️ Bạn cần đăng nhập để truy cập trang này.")
+    st.stop()
 
 st.set_page_config(
     layout="wide",
@@ -21,47 +30,27 @@ if "selected_model" not in st.session_state:
 # === Dataset Options ===
 datasets = [
     {
-        "name": "Drebin-215",
-        "desc": "Standard dataset with 215 features extracted from Android apps",
+        "name": "CIC Maldroid 2020",
+        "desc": "Standard dataset with 139 features extracted from Android malware samples",
         "samples": "15,000",
-        "size": "2.3 GB"
-    },
-    {
-        "name": "AndroZoo-2020",
-        "desc": "Large-scale collection of Android apps from various markets",
-        "samples": "24,000",
-        "size": "4.8 GB"
-    },
-    {
-        "name": "MalGenome",
-        "desc": "Focused collection of malicious Android applications",
-        "samples": "8,500",
-        "size": "1.7 GB"
+        "size": "100MB"
     },
 ]
 
 models = [
     {
-        "name": "CNN-LSTM",
+        "name": "FNN",
         "type": "Hybrid",
-        "desc": "Combines CNN for feature extraction with LSTM for sequence analysis",
+        "desc": "Neural network model with 3 hidden layers",
         "acc": "92.5%"
     },
-    {
-        "name": "BERT-Tiny",
-        "type": "Transformer",
-        "desc": "Lightweight transformer model adapted for malware detection and classification",
-        "acc": "94.1%"
-    },
-    {
-        "name": "GNN-Basic",
-        "type": "Graph",
-        "desc": "Graph neural network for analyzing app component relationships and interactions",
-        "acc": "91.8%"
-    },
+
 ]
 
 st.title("Training")
+# === Information Section ===
+st.subheader("Training Information")
+st.text_input("Enter username", placeholder="Username", key="username")
 
 # === Dataset Options ===
 st.subheader("Select Dataset")
@@ -90,7 +79,7 @@ for i, dataset in enumerate(datasets):
             help=None if selected else f"Chọn {dataset['name']}"
         ):
             st.session_state.selected_dataset = dataset["name"]
-
+        
 # === Model Options ===
 st.subheader("Select Model")
 col_models = st.columns(len(models))
@@ -123,7 +112,67 @@ selected_enough = st.session_state.selected_dataset and st.session_state.selecte
 
 if st.button("Start Training", key="start-training-button", disabled=not selected_enough):
         st.session_state.training_log = f"🚀 Training started using **{st.session_state.selected_model}** model on **{st.session_state.selected_dataset}** dataset."
+        
+        log_placeholder = st.empty()
+        with st.spinner("🚧 Training in progress..."):
+            try:
+                process = subprocess.Popen(
+                    ["python", "../../flowerclient/client.py"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
 
+                log_lines = ""  # To accumulate and display full output
+                for line in iter(process.stdout.readline, ''):
+                    if line:
+                        log_lines += line
+                        log_placeholder.text(log_lines)  # Cập nhật nội dung log theo thời gian thực
+
+                process.stdout.close()
+                process.wait()
+
+                if process.returncode == 0:
+                    st.success("Training script completed successfully.")
+                else:
+                    st.error(f"Training script failed with return code {process.returncode}")
+
+            except Exception as e:
+                st.error(f"Error running script: {e}")
+            selected_model = st.session_state.selected_model
+            selected_dataset = st.session_state.selected_dataset
+            accuracy_last_modified_time = os.path.getmtime("../../../flowerclient/flowerclient/local_accuraccy.json")
+            start_time = time.time()
+            timeout = 180
+            while True:
+                    if time.time() - start_time > timeout:
+                        raise TimeoutError("File was not updated within timeout.")
+                    if os.path.getmtime("../../../flowerclient/flowerclient/local_accuraccy.json") != accuracy_last_modified_time:
+                        try:
+                            with open("../../../flowerclient/flowerclient/local_accuraccy.json", "r") as f:
+                                accuracy_data = json.load(f)
+                                local_accuraccy = accuracy_data["local_accuraccy"]        
+                                break
+                        except json.JSONDecodeError:
+                            time.sleep(0.1)
+                    else:
+                        time.sleep(0.1)
+            loss_last_modified_time = os.path.getmtime("../../../flowerclient/flowerclient/local_loss.json")
+            while True:
+                    if time.time() - start_time > timeout:
+                        raise TimeoutError("File was not updated within timeout.")
+                    if os.path.getmtime("../../../flowerclient/flowerclient/local_loss.json") != loss_last_modified_time:
+                        try:
+                            with open("../../../flowerclient/flowerclient/local_loss.json", "r") as f:
+                                loss_data = json.load(f)
+                                local_loss = loss_data["local_loss"]        
+                                break
+                        except json.JSONDecodeError:
+                            time.sleep(0.1)
+                    else:
+                        time.sleep(0.1)        
+            update_client_info = requests.post("http://localhost:5000/update-client-info", json={"model": selected_model, "dataset": selected_dataset, "local_loss": local_loss, "local_accuracy": local_accuraccy, "clientname": st.session_state.username})
 # Hiển thị log nếu có
 if "training_log" in st.session_state:
     st.markdown(f"<div class='training-log'>{st.session_state.training_log}</div>", unsafe_allow_html=True)

@@ -2,11 +2,10 @@
 
 from flwr.client import NumPyClient, ClientApp
 from flwr.common import Context
+import mysql.connector
+import json
 
 from flowerclient.task import load_data, load_model
-
-
-# Define Flower Client and client_fn
 class FlowerClient(NumPyClient):
     def __init__(
         self, learning_rate, data, epochs, batch_size, verbose
@@ -33,10 +32,13 @@ class FlowerClient(NumPyClient):
     def evaluate(self, parameters, config):
         self.model.set_weights(parameters)
         loss, accuracy = self.model.evaluate(self.x_test, self.y_test, verbose=0)
+        with open("local_accuracy.json", "w") as f:
+                json.dump({"local_accuracy": accuracy}, f)
+        with open("local_loss.json", "w") as f:
+                json.dump({"local_loss": accuracy}, f)        
         return loss, len(self.x_test), {"accuracy": accuracy}
     def get_parameters(self, config):
         return super().get_parameters(config)
-
 def client_fn(context: Context):
     # Load model and data
     net = load_model()

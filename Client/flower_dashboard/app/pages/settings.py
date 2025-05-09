@@ -1,5 +1,8 @@
 import streamlit as st
 import pathlib
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.warning("⚠️ Bạn cần đăng nhập để truy cập trang này.")
+    st.stop()
 
 with open("assets/logo.png", "rb") as f:
     icon_bytes = f.read()

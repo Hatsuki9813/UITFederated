@@ -1,7 +1,6 @@
 import subprocess
 import socket
 import time
-
 # Lấy địa chỉ IP cục bộ (LAN IP)
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -40,5 +39,7 @@ def runclient():
 
 p1,p2 = startsupernode()
 time.sleep(10)
-
 p3 = runclient()
+p3.wait()
+p1.terminate()
+p2.terminate()

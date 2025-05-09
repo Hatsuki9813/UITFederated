@@ -7,7 +7,36 @@ from typing import Dict, List, Tuple, Optional, Union
 from tfflower.task import load_model
 from flwr.server.client_proxy import ClientProxy
 from numpy import ndarray, savez
-class AggregateCustomMetricStrategy(FedAvg):   
+import mysql.connector
+import requests
+class AggregateCustomMetricStrategy(FedAvg):
+    def update_metrics_to_mysql(model_name, accuracy, loss):
+        try:
+            connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="",
+            database="federateddb"
+            )
+
+            cursor = connection.cursor()
+
+            sql = """
+            UPDATE serverinfo
+            SET GlobalAccuracy = %s, GlobalLoss = %s
+            WHERE GlobalModel = %s
+            """
+            values = (accuracy,loss, model_name )
+            cursor.execute(sql, values)
+            connection.commit()
+            print(f"✅ Đã cập nhật MySQL cho model {model_name}")
+
+        except mysql.connector.Error as err:
+            print(f"❌ MySQL Error: {err}")
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()   
     def aggregate_evaluate(
         self,
         server_round: int,
@@ -40,6 +69,15 @@ class AggregateCustomMetricStrategy(FedAvg):
                 json.dump({"final_accuracy": aggregated_accuracy}, f)
             print(f"Final accuracy saved to 'final_accuracy.json'.")
         # Return aggregated loss and metrics (i.e., aggregated accuracy)
+        try: 
+                response = requests.get("http://127.0.0.1:5000/get-current-model")
+                if response.status_code == 200:
+                    current_model = response.json().get("model")
+                else:
+                    current_model = "unknown_model"
+                    self.update_metrics_to_mysql(current_model, aggregated_accuracy, aggregated_loss)
+        except Exception as e:
+            print(f"❌ Lỗi khi cập nhật model: {e}")
         return float(aggregated_loss), {"accuracy": float(aggregated_accuracy)}
     def aggregate_fit(
         self,
