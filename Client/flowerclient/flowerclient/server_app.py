@@ -1,4 +1,4 @@
-"""flowerclient: A Flower / TensorFlow app."""
+"""tfflower: A Flower / TensorFlow app."""
 import json
 from flwr.common import Context, ndarrays_to_parameters, Metrics,EvaluateRes, FitRes, Scalar, parameters_to_ndarrays, Parameters
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
@@ -7,7 +7,38 @@ from typing import Dict, List, Tuple, Optional, Union
 from flowerclient.task import load_model
 from flwr.server.client_proxy import ClientProxy
 from numpy import ndarray, savez
-class AggregateCustomMetricStrategy(FedAvg):   
+import requests
+class AggregateCustomMetricStrategy(FedAvg):
+    '''def update_metrics_to_mysql(self, model_name, accuracy, loss):
+        try:
+            connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="",
+            database="federateddb"
+            )
+
+
+            cursor = connection.cursor()
+
+
+            sql = """
+            UPDATE serverinfo
+            SET GlobalAccuracy = %s, GlobalLoss = %s
+            WHERE GlobalModel = %s
+            """
+            values = (accuracy,loss, model_name )
+            cursor.execute(sql, values)
+            connection.commit()
+            print(f"✅ Đã cập nhật MySQL cho model {model_name}")
+
+
+        except mysql.connector.Error as err:
+            print(f"❌ MySQL Error: {err}")
+        finally:
+            if connection.is_connected():
+                cursor.close()
+                connection.close()'''  
     def aggregate_evaluate(
         self,
         server_round: int,
@@ -16,8 +47,10 @@ class AggregateCustomMetricStrategy(FedAvg):
     ) -> Tuple[Optional[float], Dict[str, Scalar]]:
         """Aggregate evaluation accuracy using weighted average."""
 
+
         if not results:
             return None, {}
+
 
         # Call aggregate_evaluate from base class (FedAvg) to aggregate loss and metrics
         aggregated_loss, aggregated_metrics = super().aggregate_evaluate(
@@ -30,16 +63,41 @@ class AggregateCustomMetricStrategy(FedAvg):
         accuracies = [r.metrics["accuracy"] * r.num_examples for _, r in results]
         examples = [r.num_examples for _, r in results]
 
+
         # Aggregate and print custom metric
         aggregated_accuracy = sum(accuracies) / sum(examples)
         print(
             f"Round {server_round} accuracy aggregated from client results: {aggregated_accuracy}"
         )
-        if server_round == 1:
+        payload = {
+            "final_accuracy": aggregated_accuracy,
+            "aggregated_loss": aggregated_loss,
+            "model": "FNN",
+        }
+        print(f"before update global model")
+        response = requests.post("http://127.0.0.1:5000/update-global-model", json=payload)
+        if response.status_code == 200:
+            print(f"updated global model: {response.status_code}")
+        else:
+            print(f"Error when update model: {response.status_code}")
+        '''if server_round == 1:
             with open("final_accuracy.json", "w") as f:
                 json.dump({"final_accuracy": aggregated_accuracy}, f)
-            print(f"Final accuracy saved to 'final_accuracy.json'.")
+            print(f"Final accuracy saved to 'final_accuracy.json'.")'''
+       
+       
         # Return aggregated loss and metrics (i.e., aggregated accuracy)
+        '''try:
+                response = requests.get("http://127.0.0.1:5000/get-current-model", timeout=5)
+                if response.status_code == 200:
+                    print(f"Đang update global model: {response.status_code}")
+                    current_model = response.json().get("model")
+                    self.update_metrics_to_mysql(current_model, aggregated_accuracy, aggregated_loss)
+                else:
+                    current_model = "unknown_model"
+                    print(f"❌ Lỗi khi lấy model hiện tại: {response.status_code}")
+        except Exception as e:
+            print(f"❌ Lỗi khi cập nhật model: {e}")'''
         return float(aggregated_loss), {"accuracy": float(aggregated_accuracy)}
     def aggregate_fit(
         self,
@@ -48,10 +106,12 @@ class AggregateCustomMetricStrategy(FedAvg):
         failures: list[Union[tuple[ClientProxy, FitRes], BaseException]],
     ) -> tuple[Optional[Parameters], dict[str, Scalar]]:
 
+
         # Call aggregate_fit from base class (FedAvg) to aggregate parameters and metrics
         aggregated_parameters, aggregated_metrics = super().aggregate_fit(
             server_round, results, failures
         )
+
 
         if aggregated_parameters is not None:
             # Convert `Parameters` to `list[np.ndarray]`
@@ -59,11 +119,14 @@ class AggregateCustomMetricStrategy(FedAvg):
                 aggregated_parameters
             )
 
+
             # Save aggregated_ndarrays to disk
             print(f"Saving round {server_round} aggregated_ndarrays...")
             savez(f"round-{server_round}-weights.npz", *aggregated_ndarrays)
 
+
         return aggregated_parameters, aggregated_metrics
+
 
 def on_fit_config(server_round: int) -> Metrics:
     #adjust learning rate based on server round
@@ -72,20 +135,24 @@ def on_fit_config(server_round: int) -> Metrics:
         lr = 0.005
     return {"lr": lr}
 
+
 def weighted_average(metrics: List[Tuple[int, Metrics]])->Metrics:
-    accuracies = [num_examples * m["accuracy"] for num_examples, m in metrics]   
+    accuracies = [num_examples * m["accuracy"] for num_examples, m in metrics]  
     """Compute the weighted average of a list of metrics."""
     total_examples = sum(num_examples for num_examples, _ in metrics)
     return {
         "accuracy": sum(accuracies) / total_examples,
     }
 
+
 def server_fn(context: Context):
     # Read from config
     num_rounds = context.run_config["num-server-rounds"]
 
+
     # Get parameters to initialize global model
     parameters = ndarrays_to_parameters(load_model().get_weights())
+
 
     # Define strategy
     strategy = strategy = AggregateCustomMetricStrategy(
@@ -98,7 +165,9 @@ def server_fn(context: Context):
     )
     config = ServerConfig(num_rounds=num_rounds)
 
+
     return ServerAppComponents(strategy=strategy, config=config)
+
 
 # Create ServerApp
 app = ServerApp(server_fn=server_fn)
