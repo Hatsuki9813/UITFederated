@@ -10,7 +10,7 @@ from numpy import ndarray, savez
 import mysql.connector
 import requests
 class AggregateCustomMetricStrategy(FedAvg):
-    def update_metrics_to_mysql(model_name, accuracy, loss):
+    '''def update_metrics_to_mysql(self, model_name, accuracy, loss):
         try:
             connection = mysql.connector.connect(
             host="localhost",
@@ -36,7 +36,7 @@ class AggregateCustomMetricStrategy(FedAvg):
         finally:
             if connection.is_connected():
                 cursor.close()
-                connection.close()   
+                connection.close()'''  
     def aggregate_evaluate(
         self,
         server_round: int,
@@ -64,20 +64,35 @@ class AggregateCustomMetricStrategy(FedAvg):
         print(
             f"Round {server_round} accuracy aggregated from client results: {aggregated_accuracy}"
         )
+        payload = {
+            "final_accuracy": aggregated_accuracy,
+            "aggregated_loss": aggregated_loss,
+            "model": "FNN",
+        }
+        print(f"before update global model")
+        response = requests.post("http://127.0.0.1:5000/update-global-model", json=payload)
+        if response.status_code == 200:
+            print(f"updated global model: {response.status_code}")
+        else:
+            print(f"Error when update model: {response.status_code}")
         if server_round == 1:
             with open("final_accuracy.json", "w") as f:
                 json.dump({"final_accuracy": aggregated_accuracy}, f)
             print(f"Final accuracy saved to 'final_accuracy.json'.")
+        
+        
         # Return aggregated loss and metrics (i.e., aggregated accuracy)
-        try: 
-                response = requests.get("http://127.0.0.1:5000/get-current-model")
+        '''try: 
+                response = requests.get("http://127.0.0.1:5000/get-current-model", timeout=5)
                 if response.status_code == 200:
+                    print(f"Đang update global model: {response.status_code}")
                     current_model = response.json().get("model")
+                    self.update_metrics_to_mysql(current_model, aggregated_accuracy, aggregated_loss)
                 else:
                     current_model = "unknown_model"
-                    self.update_metrics_to_mysql(current_model, aggregated_accuracy, aggregated_loss)
+                    print(f"❌ Lỗi khi lấy model hiện tại: {response.status_code}")
         except Exception as e:
-            print(f"❌ Lỗi khi cập nhật model: {e}")
+            print(f"❌ Lỗi khi cập nhật model: {e}")'''
         return float(aggregated_loss), {"accuracy": float(aggregated_accuracy)}
     def aggregate_fit(
         self,

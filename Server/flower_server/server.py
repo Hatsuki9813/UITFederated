@@ -20,11 +20,14 @@ def login():
     data = request.get_json()
     username = data.get("username")
     password = data.get("password")
+    
 
-    cursor.execute("SELECT password FROM users WHERE username = %s", (username,))
+    cursor.execute("SELECT id, password FROM users WHERE username = %s", (username,))
     result = cursor.fetchone()
-    if result and bcrypt.checkpw(password.encode(), result[0].encode()):
-        logged_in_users.append(username)
+    cursor.close()
+    if result and bcrypt.checkpw(password.encode(), result[1].encode()):
+        user_id = result[0]
+        logged_in_users.append(user_id)
         return jsonify({"status": "success", "message": "Login successful", "user_id": result[0] })
     else:
         return jsonify({"status": "error", "message": "Invalid credentials"}), 401
@@ -39,7 +42,8 @@ def signup():
     hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     try:
         cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, hashed))
-        result = cursor.fetchone()
+        mydb.commit() 
+        cursor.close()
         return jsonify({"status": "success", "message": "Signup successful"})
     except mysql.connector.IntegrityError:
         return jsonify({"status": "error", "message": "Username already exists"}), 409
@@ -81,6 +85,7 @@ def get_global_model():
         cursor = mydb.cursor()
         cursor.execute("SELECT * FROM serverinfo WHERE GlobalModel = %s", (requested_model,))
         result = cursor.fetchone()
+        cursor.close()
         if result:
             model_info = {
                 "AggregatedMetric": result[0],
@@ -97,16 +102,51 @@ def update_client_info():
     data = request.get_json()
     model = data.get("model")
     clientdata = data.get("dataset")
-    clientaccuracy = data.get("local_accuracy")
-    clientloss = data.get("local_loss")
+    clientaccuracy = float(data.get("local_accuracy"))
+    clientloss = float(data.get("local_loss"))
     clientname = data.get("clientname")
     try:
         cursor = mydb.cursor()
-        cursor.execute("UPDATE client SET ClientModel = %s ClientData = %s, ClientAccuracy = %s, ClientLoss = %s WHERE ClientName = %s", (model, clientdata, clientaccuracy, clientloss, clientname))
+        cursor.execute("SELECT id FROM users WHERE username = %s", (clientname,))
+        result = cursor.fetchone()
+        userid = result[0] if result else None
+        if not userid:
+            return "Lỗi: Không tìm thấy client trong cơ sở dữ liệu"
+        cursor.execute("""
+            INSERT INTO client (ClientID, ClientModel, ClientData, ClientAccuracy, ClientLoss)
+            VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                ClientModel = VALUES(ClientModel),
+                ClientData = VALUES(ClientData),
+                ClientAccuracy = VALUES(ClientAccuracy),
+                ClientLoss = VALUES(ClientLoss)
+        """, (userid, model, clientdata, clientaccuracy, clientloss))  
+        mydb.commit()  
         cursor.close()
         return f"Cập nhật thành công client"
     except Exception as e:
         return f"Lỗi: {str(e)}"
+@app.route("/update-global-model", methods=['POST'])
+def update_global_model():
+    data = request.get_json()
+    model = data.get("model")
+    accuracy = float(data.get("final_accuracy"))
+    loss = float(data.get("aggregated_loss"))
+    try:
+        cursor = mydb.cursor()
+        cursor.execute("""
+            INSERT INTO serverinfo (GlobalModel, GlobalAccuracy, GlobalLoss)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                GlobalAccuracy = VALUES(GlobalAccuracy),
+                GlobalLoss = VALUES(GlobalLoss)
+        """, (model, accuracy, loss))
+        mydb.commit()  
+        cursor.close()
+        return f"Cập nhật thành công model {model}"
+    except Exception as e:
+        return f"Lỗi: {str(e)}"
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)
    
