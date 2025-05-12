@@ -101,8 +101,11 @@ def get_global_model():
 def update_client_info():
     data = request.get_json()
     model = data.get("model")
+    print(f"model: {model}")
     clientdata = data.get("dataset")
+    print(f"clientdata: {clientdata}")
     clientaccuracy = float(data.get("local_accuracy"))
+    print(f"clientaccuracy: {clientaccuracy}")
     clientloss = float(data.get("local_loss"))
     clientname = data.get("clientname")
     try:
@@ -126,6 +129,25 @@ def update_client_info():
         return f"Cập nhật thành công client"
     except Exception as e:
         return f"Lỗi: {str(e)}"
+@app.route("/get-client-info", methods=['GET'])
+def get_client_info():
+    cursor = mydb.cursor()
+    cursor.execute("SELECT * FROM client")
+    result = cursor.fetchall()
+    cursor.close()
+    if result:
+        client_info = []
+        for row in result:
+            client_info.append({
+                "ClientID": row[0],
+                "ClientModel": row[1],
+                "ClientData": row[2],
+                "ClientAccuracy": row[3],
+                "ClientLoss": row[4]
+            })
+        return json.dumps(client_info)
+    else:
+        return "Lỗi: Không tìm thấy thông tin client"
 @app.route("/update-global-model", methods=['POST'])
 def update_global_model():
     data = request.get_json()

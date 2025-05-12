@@ -4,7 +4,7 @@ from flwr.common import Context, ndarrays_to_parameters, Metrics,EvaluateRes, Fi
 from flwr.server import ServerApp, ServerAppComponents, ServerConfig
 from flwr.server.strategy import FedAvg
 from typing import Dict, List, Tuple, Optional, Union
-from tfflower.task import load_model
+from flower_server.task import load_model
 from flwr.server.client_proxy import ClientProxy
 from numpy import ndarray, savez
 import mysql.connector
@@ -75,10 +75,10 @@ class AggregateCustomMetricStrategy(FedAvg):
             print(f"updated global model: {response.status_code}")
         else:
             print(f"Error when update model: {response.status_code}")
-        if server_round == 1:
+        '''if server_round == 1:
             with open("final_accuracy.json", "w") as f:
                 json.dump({"final_accuracy": aggregated_accuracy}, f)
-            print(f"Final accuracy saved to 'final_accuracy.json'.")
+            print(f"Final accuracy saved to 'final_accuracy.json'.")'''
         
         
         # Return aggregated loss and metrics (i.e., aggregated accuracy)

@@ -9,7 +9,6 @@ from flwr_datasets import FederatedDataset
 from flwr_datasets.partitioner import IidPartitioner, DirichletPartitioner
 from matplotlib import pyplot as plt
 import tensorflow as tf
-import cv2
 import numpy as np
 from keras._tf_keras.keras.utils import load_img, img_to_array
 from datasets import load_dataset
