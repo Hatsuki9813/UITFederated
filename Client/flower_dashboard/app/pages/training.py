@@ -5,9 +5,14 @@ import requests
 import json
 import os
 import time
-
+import sys
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+SERVER_IP = "http://10.0.145.238:5000"
+SUPERNODE_PATH = os.path.abspath(os.path.join(CURRENT_DIR, "../../../flowerclient/client.py"))
+SUPERNODE_DIR = os.path.dirname(SUPERNODE_PATH)  # Lấy thư mục chứa client.py
+CERTIFICATE_PATH = os.path.abspath(os.path.join(CURRENT_DIR, "../../../flowerclient/certificates/ca.crt"))
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
-    st.warning("⚠️ Bạn cần đăng nhập để truy cập trang này.")
+    st.warning("Bạn cần đăng nhập để truy cập trang này.")
     st.stop()
 
 st.set_page_config(
@@ -109,15 +114,71 @@ for i, model in enumerate(models):
 
 # === Start Training Button ===
 selected_enough = st.session_state.selected_dataset and st.session_state.selected_model
+if st.button("Load CA.crt from server"):
+    getca = requests.get(f"{SERVER_IP}/getcertificate")
+    if getca.status_code == 200:
+        with open(CERTIFICATE_PATH, 'wb') as f:
+            f.write(getca.content)
+        print("Tải file thành công")
+    else:
+        print("Tải file thất bại")
 
+if st.button("Update Client Info"):
+            selected_model = st.session_state.selected_model
+            selected_dataset = st.session_state.selected_dataset
+            name = st.session_state.username
+            print(f"selected_model: {selected_model}")
+            print(f"selected_dataset: {selected_dataset}")
+            print(f"name: {name} ")
+            ACCURACY_PATH = os.path.abspath(os.path.join(CURRENT_DIR, "../../../flowerclient/local_accuracy.json"))
+            accuracy_last_modified_time = os.path.getmtime(ACCURACY_PATH)
+            #start_time = time.time()
+            #timeout = 180
+            #while True:
+                   # if time.time() - start_time > timeout:
+                        #raise TimeoutError("File was not updated within timeout.")
+                    #if os.path.getmtime(ACCURACY_PATH) != accuracy_last_modified_time:
+            try:
+                with open(ACCURACY_PATH, "r") as f:
+                                accuracy_data = json.load(f)
+                                local_accuraccy = accuracy_data["local_accuracy"] 
+                                print(f"Local Accuracy: {local_accuraccy}")
+
+                                #break
+            except json.JSONDecodeError:
+                    print("error reading local loss")
+
+                    #else:
+                        #time.sleep(0.1)
+            LOSS_PATH = os.path.abspath(os.path.join(CURRENT_DIR, "../../../flowerclient/local_loss.json"))
+            print(LOSS_PATH)
+            #loss_last_modified_time = os.path.getmtime(LOSS_PATH)
+            #while True: 
+            #        if time.time() - start_time > timeout:
+            #            raise TimeoutError("File was not updated within timeout.")
+            #        if os.path.getmtime(LOSS_PATH) != loss_last_modified_time:
+            try:
+                with open(LOSS_PATH, "r") as f:
+                    loss_data = json.load(f)
+                    local_loss = loss_data["local_loss"]
+                    print(f"Local Loss: {local_loss}")
+        
+                    #break
+            except json.JSONDecodeError:
+                    print("error reading local loss")
+
+            current_model = requests.post(f"{SERVER_IP}/set-current-model", json={"model": selected_model})        
+            update_client_info = requests.post(f"{SERVER_IP}/update-client-info", json={"model": selected_model, "dataset": selected_dataset, "local_loss": local_loss, "local_accuracy": local_accuraccy, "clientname": st.session_state.username})
 if st.button("Start Training", key="start-training-button", disabled=not selected_enough):
-        st.session_state.training_log = f"🚀 Training started using **{st.session_state.selected_model}** model on **{st.session_state.selected_dataset}** dataset."
+        st.session_state.training_log = f"Training started using **{st.session_state.selected_model}** model on **{st.session_state.selected_dataset}** dataset."
         
         log_placeholder = st.empty()
-        with st.spinner("🚧 Training in progress..."):
+        with st.spinner("Training in progress..."):
             try:
+                print(SUPERNODE_PATH)
                 process = subprocess.Popen(
-                    ["python", "../../flowerclient/client.py"],
+                    ["python", "client.py"],
+                cwd=SUPERNODE_DIR,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -140,39 +201,6 @@ if st.button("Start Training", key="start-training-button", disabled=not selecte
 
             except Exception as e:
                 st.error(f"Error running script: {e}")
-            selected_model = st.session_state.selected_model
-            selected_dataset = st.session_state.selected_dataset
-            accuracy_last_modified_time = os.path.getmtime("../../../flowerclient/flowerclient/local_accuraccy.json")
-            start_time = time.time()
-            timeout = 180
-            while True:
-                    if time.time() - start_time > timeout:
-                        raise TimeoutError("File was not updated within timeout.")
-                    if os.path.getmtime("../../../flowerclient/flowerclient/local_accuraccy.json") != accuracy_last_modified_time:
-                        try:
-                            with open("../../../flowerclient/flowerclient/local_accuraccy.json", "r") as f:
-                                accuracy_data = json.load(f)
-                                local_accuraccy = accuracy_data["local_accuraccy"]        
-                                break
-                        except json.JSONDecodeError:
-                            time.sleep(0.1)
-                    else:
-                        time.sleep(0.1)
-            loss_last_modified_time = os.path.getmtime("../../../flowerclient/flowerclient/local_loss.json")
-            while True:
-                    if time.time() - start_time > timeout:
-                        raise TimeoutError("File was not updated within timeout.")
-                    if os.path.getmtime("../../../flowerclient/flowerclient/local_loss.json") != loss_last_modified_time:
-                        try:
-                            with open("../../../flowerclient/flowerclient/local_loss.json", "r") as f:
-                                loss_data = json.load(f)
-                                local_loss = loss_data["local_loss"]        
-                                break
-                        except json.JSONDecodeError:
-                            time.sleep(0.1)
-                    else:
-                        time.sleep(0.1)        
-            update_client_info = requests.post("http://localhost:5000/update-client-info", json={"model": selected_model, "dataset": selected_dataset, "local_loss": local_loss, "local_accuracy": local_accuraccy, "clientname": st.session_state.username})
 # Hiển thị log nếu có
 if "training_log" in st.session_state:
     st.markdown(f"<div class='training-log'>{st.session_state.training_log}</div>", unsafe_allow_html=True)

@@ -2,7 +2,6 @@
 
 from flwr.client import NumPyClient, ClientApp
 from flwr.common import Context
-import mysql.connector
 import json
 
 from flowerclient.task import load_data, load_model
@@ -35,7 +34,7 @@ class FlowerClient(NumPyClient):
         with open("local_accuracy.json", "w") as f:
                 json.dump({"local_accuracy": accuracy}, f)
         with open("local_loss.json", "w") as f:
-                json.dump({"local_loss": accuracy}, f)        
+                json.dump({"local_loss": loss}, f)        
         return loss, len(self.x_test), {"accuracy": accuracy}
     def get_parameters(self, config):
         return super().get_parameters(config)

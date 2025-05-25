@@ -2,6 +2,7 @@ import streamlit as st
 import pathlib
 import requests
 import json
+SERVER_IP = "http://10.0.145.238:5000"
 
 
 # Gọi một hàm từ module
@@ -21,7 +22,7 @@ def Login():
 
     if page == "Login":
         if st.button("Login"):
-            res = requests.post("http://localhost:5000/login", json={"username": username, "password": password})
+            res = requests.post(f"{SERVER_IP}/login", json={"username": username, "password": password})
             try:
                 data = res.json()
                 if data["status"] == "success":
@@ -37,7 +38,7 @@ def Login():
 
     elif page == "Sign Up":
         if st.button("Sign Up"):
-            res = requests.post("http://localhost:5000/signup", json={"username": username, "password": password})
+            res = requests.post(f"{SERVER_IP}/signup", json={"username": username, "password": password})
             try:
                 data = res.json()
                 if data["status"] == "success":

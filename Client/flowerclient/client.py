@@ -2,6 +2,7 @@ import subprocess
 import socket
 import time
 # Lấy địa chỉ IP cục bộ (LAN IP)
+server_address = '10.0.145.238'
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -15,15 +16,15 @@ def startsupernode():
     ip_address = get_local_ip()
     command1 = [
     "flower-supernode",
-    "--insecure",
-    f"--superlink=10.0.171.199:9092",
+    "--root-certificates", "certificates/ca.crt",
+    f"--superlink={server_address}:9092",
     f"--clientappio-api-address={ip_address}:9094",
     "--node-config", "partition-id=0 num-partitions=2"
 ]
     command2 = [
     "flower-supernode",
-    "--insecure",
-    f"--superlink=10.0.171.199:9092",
+    "--root-certificates", "certificates/ca.crt",
+    f"--superlink={server_address}:9092",
     f"--clientappio-api-address={ip_address}:9095",
     "--node-config", "partition-id=0 num-partitions=2"
 ]  
@@ -40,6 +41,6 @@ def runclient():
 p1,p2 = startsupernode()
 time.sleep(10)
 p3 = runclient()
-p3.wait()
+'''p3.wait()
 p1.terminate()
-p2.terminate()
+p2.terminate()'''

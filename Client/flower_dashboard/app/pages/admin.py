@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import pathlib
 import requests
+SERVER_IP = "http://10.0.145.238:5000"
+
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.warning("⚠️ Bạn cần đăng nhập để truy cập trang này.")
     st.stop()
@@ -33,7 +35,7 @@ with tab1:
         if option:
             try:
             # Gửi yêu cầu POST tới Flask API
-                response = requests.post("http://127.0.0.1:5000/get-global-model", json={"model": option})
+                response = requests.post(f"{SERVER_IP}/get-global-model", json={"model": option})
 
                 if response.status_code == 200:
                     try:
@@ -99,25 +101,13 @@ with tab1:
         st.subheader("Recent Activity")
         st.caption("Recent user activity and system events.")
         search_query_activity = st.text_input("Search activity...", "")
-        data_activity = {
-            'User': ['john.doe@example.com'],
-            'IP': ['192.168.129.123'],
-            'Date': ['2023-04-15 09:24'],
-            'Status': ['Success'],
-            'Local loss': ['0.123'],
-            'Local accuracy': ['0.95'],
-            'Dataset': ['CICMaldroid'],
-            'Model': ['MLP'],
-        }
-        df_activity = pd.DataFrame(data_activity)
-
-        if search_query_activity:
-            df_activity = df_activity[
-                df_activity['User'].str.lower().str.contains(search_query_activity.lower()) |
-                df_activity['Action'].str.lower().str.contains(search_query_activity.lower())
-            ]
-
-        st.dataframe(df_activity, hide_index=True)
+        response = requests.get(f"{SERVER_IP}/get-client-info")
+        if response.status_code == 200:
+            json_data = response.json()  # Đây là danh sách các dict
+            df = pd.DataFrame(json_data)  # Chuyển sang DataFrame
+            st.dataframe(df)  # Hiển thị bảng
+        else:
+            st.error("Không thể lấy dữ liệu từ API.")
 
 # Nội dung tab Models
 with tab2:
