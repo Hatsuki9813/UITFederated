@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify,send_from_directory
 import mysql.connector
 import subprocess
 import json
@@ -168,6 +168,9 @@ def update_global_model():
         return f"Cập nhật thành công model {model}"
     except Exception as e:
         return f"Lỗi: {str(e)}"
+@app.route('/getcertificate', methods=['GET'])
+def download_file():
+    return send_from_directory('certificates', "ca.crt", as_attachment=True)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
