@@ -7,10 +7,10 @@ import os
 import time
 import sys
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-SERVER_IP = "http://10.0.253.240:5000"
+SERVER_IP = "http://10.0.145.238:5000"
 SUPERNODE_PATH = os.path.abspath(os.path.join(CURRENT_DIR, "../../../flowerclient/client.py"))
 SUPERNODE_DIR = os.path.dirname(SUPERNODE_PATH)  # Lấy thư mục chứa client.py
-
+CERTIFICATE_PATH = os.path.abspath(os.path.join(CURRENT_DIR, "../../../flowerclient/certificates/ca.crt"))
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.warning("Bạn cần đăng nhập để truy cập trang này.")
     st.stop()
@@ -114,39 +114,15 @@ for i, model in enumerate(models):
 
 # === Start Training Button ===
 selected_enough = st.session_state.selected_dataset and st.session_state.selected_model
+if st.button("Load CA.crt from server"):
+    getca = requests.get(f"{SERVER_IP}/getcertificate")
+    if getca.status_code == 200:
+        with open(CERTIFICATE_PATH, 'wb') as f:
+            f.write(getca.content)
+        print("Tải file thành công")
+    else:
+        print("Tải file thất bại")
 
-if st.button("Start Training", key="start-training-button", disabled=not selected_enough):
-        st.session_state.training_log = f"Training started using **{st.session_state.selected_model}** model on **{st.session_state.selected_dataset}** dataset."
-        
-        log_placeholder = st.empty()
-        with st.spinner("Training in progress..."):
-            try:
-                print(SUPERNODE_PATH)
-                process = subprocess.Popen(
-                    ["python", "client.py"],
-                cwd=SUPERNODE_DIR,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1
-            )
-
-                log_lines = ""  # To accumulate and display full output
-                for line in iter(process.stdout.readline, ''):
-                    if line:
-                        log_lines += line
-                        log_placeholder.text(log_lines)  # Cập nhật nội dung log theo thời gian thực
-
-                process.stdout.close()
-                process.wait()
-
-                if process.returncode == 0:
-                    st.success("Training script completed successfully.")
-                else:
-                    st.error(f"Training script failed with return code {process.returncode}")
-
-            except Exception as e:
-                st.error(f"Error running script: {e}")
 if st.button("Update Client Info"):
             selected_model = st.session_state.selected_model
             selected_dataset = st.session_state.selected_dataset
@@ -193,6 +169,38 @@ if st.button("Update Client Info"):
 
             current_model = requests.post(f"{SERVER_IP}/set-current-model", json={"model": selected_model})        
             update_client_info = requests.post(f"{SERVER_IP}/update-client-info", json={"model": selected_model, "dataset": selected_dataset, "local_loss": local_loss, "local_accuracy": local_accuraccy, "clientname": st.session_state.username})
+if st.button("Start Training", key="start-training-button", disabled=not selected_enough):
+        st.session_state.training_log = f"Training started using **{st.session_state.selected_model}** model on **{st.session_state.selected_dataset}** dataset."
+        
+        log_placeholder = st.empty()
+        with st.spinner("Training in progress..."):
+            try:
+                print(SUPERNODE_PATH)
+                process = subprocess.Popen(
+                    ["python", "client.py"],
+                cwd=SUPERNODE_DIR,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+
+                log_lines = ""  # To accumulate and display full output
+                for line in iter(process.stdout.readline, ''):
+                    if line:
+                        log_lines += line
+                        log_placeholder.text(log_lines)  # Cập nhật nội dung log theo thời gian thực
+
+                process.stdout.close()
+                process.wait()
+
+                if process.returncode == 0:
+                    st.success("Training script completed successfully.")
+                else:
+                    st.error(f"Training script failed with return code {process.returncode}")
+
+            except Exception as e:
+                st.error(f"Error running script: {e}")
 # Hiển thị log nếu có
 if "training_log" in st.session_state:
     st.markdown(f"<div class='training-log'>{st.session_state.training_log}</div>", unsafe_allow_html=True)

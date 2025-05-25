@@ -2,7 +2,7 @@ import streamlit as st
 import pathlib
 import requests
 import json
-SERVER_IP = "http://10.0.119.255:5000"
+SERVER_IP = "http://10.0.145.238:5000"
 
 
 # Gọi một hàm từ module

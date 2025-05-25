@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import pathlib
 import requests
-SERVER_IP = "http://10.0.253.240:5000"
+SERVER_IP = "http://10.0.145.238:5000"
 
 if "logged_in" not in st.session_state or not st.session_state.logged_in:
     st.warning("⚠️ Bạn cần đăng nhập để truy cập trang này.")
