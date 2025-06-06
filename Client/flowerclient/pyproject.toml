@@ -39,5 +39,5 @@ options.num-supernodes = 10
 
 
 [tool.flwr.federations.flowerclient]
-address = "10.0.171.199:9093"
-insecure = true
+address = "10.0.145.238:9093"
+root-certificates = "./certificates/ca.crt"

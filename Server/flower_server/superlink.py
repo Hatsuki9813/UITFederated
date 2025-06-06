@@ -5,6 +5,11 @@ import json
 
 
 def startsuperlink():
-    command = ["flower-superlink", "--insecure"]
+    command = [
+        "flower-superlink",
+        "--ssl-ca-certfile", "certificates/ca.crt",
+        "--ssl-certfile", "certificates/server.pem",
+        "--ssl-keyfile", "certificates/server.key"
+    ]
     subprocess.Popen(command)
 startsuperlink()

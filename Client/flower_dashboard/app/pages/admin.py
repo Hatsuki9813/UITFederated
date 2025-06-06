@@ -1,7 +1,12 @@
 import streamlit as st
 import pandas as pd
 import pathlib
+import requests
+SERVER_IP = "http://10.0.145.238:5000"
 
+if "logged_in" not in st.session_state or not st.session_state.logged_in:
+    st.warning("⚠️ Bạn cần đăng nhập để truy cập trang này.")
+    st.stop()
 st.set_page_config(
     layout="wide",
 )
@@ -14,13 +19,45 @@ css_path = pathlib.Path("assets/styles/admin.css")
 load_css(css_path)
 
 st.title("Admin Dashboard")
+global_loss = 0.324
+global_accuracy = 86.7
 
 tab1, tab2, tab3 = st.tabs(["Overview", "Models", "Datasets"])
 
 # Nội dung tab Overview
 with tab1:
-    st.subheader("Overview")
-    st.caption("Monitor system performance and user activity.")
+    st.subheader("Global Model Overview")
+    option = st.selectbox("Select Model", ["FNN", "Logistic Regression"])
+
+# Container to rerender based on selection
+    with st.container():
+
+        if option:
+            try:
+            # Gửi yêu cầu POST tới Flask API
+                response = requests.post(f"{SERVER_IP}/get-global-model", json={"model": option})
+
+                if response.status_code == 200:
+                    try:
+                        data = response.json()
+                        global_accuracy = float(data.get("GlobalAccuracy", 0))
+                        global_loss = float(data.get("GlobalLoss", 0))
+
+                        st.success("Lấy thông tin thành công!")
+
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.metric(label="Global Loss", value=f"{global_loss:.4f}")
+                        with col2:
+                            st.metric(label="Global Accuracy", value=f"{global_accuracy:.2f}%")
+                    except Exception:
+                        st.error("Lỗi: Dữ liệu trả về không hợp lệ hoặc không phải JSON.")
+                else:
+                    st.error(f"Lỗi từ server: {response.text}")
+            except Exception as e:
+                st.error(f"Lỗi kết nối tới API: {e}")
+
+
 
     # System Overview Stats
     with st.container():
@@ -64,21 +101,13 @@ with tab1:
         st.subheader("Recent Activity")
         st.caption("Recent user activity and system events.")
         search_query_activity = st.text_input("Search activity...", "")
-        data_activity = {
-            'User': ['john.doe@example.com', 'jane.smith@example.com', 'admin@example.com', 'mark.wilson@example.com'],
-            'Action': ['Started training session', 'Added new model', 'Updated dataset', 'Stopped training session'],
-            'Date': ['2023-04-15 09:24', '2023-04-14 14:35', '2023-04-14 11:42', '2023-04-13 16:18'],
-            'Status': ['Success', 'Success', 'Success', 'Success']
-        }
-        df_activity = pd.DataFrame(data_activity)
-
-        if search_query_activity:
-            df_activity = df_activity[
-                df_activity['User'].str.lower().str.contains(search_query_activity.lower()) |
-                df_activity['Action'].str.lower().str.contains(search_query_activity.lower())
-            ]
-
-        st.dataframe(df_activity, hide_index=True)
+        response = requests.get(f"{SERVER_IP}/get-client-info")
+        if response.status_code == 200:
+            json_data = response.json()  # Đây là danh sách các dict
+            df = pd.DataFrame(json_data)  # Chuyển sang DataFrame
+            st.dataframe(df)  # Hiển thị bảng
+        else:
+            st.error("Không thể lấy dữ liệu từ API.")
 
 # Nội dung tab Models
 with tab2:
